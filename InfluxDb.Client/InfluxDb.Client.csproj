@@ -73,9 +73,8 @@
         <Compile Include="InfluxDb.Client.Write\IInfluxDbWriteEndpoints.cs" />
         <Compile Include="InfluxDb.Client.Write\InfluxDbEscapeHandler.cs" />
         <Compile Include="InfluxDb.Client.Write\InfluxDbPoint.cs" />
-        <Compile Include="InfluxDb.Client.Write\InfluxDbWriteClient.cs" />
         <Compile Include="InfluxDb.Client.Write\InfluxDbWriteEndpoints.cs" />
-        <Compile Include="InfluxDb.Client.Write\ThrottledInfluxDbWriteClient.cs" />
+        <Compile Include="InfluxDb.Client.Write\InfluxDbWriteClient.cs" />
         <Compile Include="InfluxDb.Client\InfluxDbAuth.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>

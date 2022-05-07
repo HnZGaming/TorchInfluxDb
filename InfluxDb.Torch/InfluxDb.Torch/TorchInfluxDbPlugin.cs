@@ -4,6 +4,7 @@ using InfluxDb.Client;
 using InfluxDb.Client.V18;
 using InfluxDb.Client.Write;
 using NLog;
+using Sandbox.ModAPI;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
@@ -20,8 +21,9 @@ namespace InfluxDb.Torch
         UserControl _userControl;
         InfluxDbAuth _auth;
         IInfluxDbWriteEndpoints _endpoints;
-        ThrottledInfluxDbWriteClient _throttledWriteClient;
+        InfluxDbWriteClient _writeClient;
         FileLoggingConfigurator _loggingConfigurator;
+        bool _runOnce;
 
         public UserControl GetControl() => _config.GetOrCreateUserControl(ref _userControl);
 
@@ -46,12 +48,12 @@ namespace InfluxDb.Torch
 
             ReloadConfig();
 
-            var writeClient = new InfluxDbWriteClient(_endpoints);
             var interval = TimeSpan.FromSeconds(TorchInfluxDbConfig.Instance.WriteIntervalSecs);
-            _throttledWriteClient = new ThrottledInfluxDbWriteClient(writeClient, interval);
+            _writeClient = new InfluxDbWriteClient(_endpoints, interval);
 
+            // static api for other plugins
             TorchInfluxDbWriter.WriteEndpoints = _endpoints;
-            TorchInfluxDbWriter.WriteClient = _throttledWriteClient;
+            TorchInfluxDbWriter.WriteClient = _writeClient;
 
             if (TorchInfluxDbConfig.Instance.Enable)
             {
@@ -100,7 +102,7 @@ namespace InfluxDb.Torch
             if (TorchInfluxDbConfig.Instance.Enable != TorchInfluxDbWriter.Enabled)
             {
                 TorchInfluxDbWriter.Enabled = TorchInfluxDbConfig.Instance.Enable;
-                _throttledWriteClient.SetRunning(TorchInfluxDbConfig.Instance.Enable);
+                _writeClient.SetRunning(TorchInfluxDbConfig.Instance.Enable);
 
                 Log.Info($"Writing enabled: {TorchInfluxDbConfig.Instance.Enable}");
             }
@@ -115,14 +117,32 @@ namespace InfluxDb.Torch
             _auth.Password = TorchInfluxDbConfig.Instance.Password;
         }
 
+        public override void Update()
+        {
+            if (!_runOnce)
+            {
+                _runOnce = true;
+                MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnMessage);
+            }
+        }
+
+        void OnMessage(object message)
+        {
+            if (message is not string line) return;
+
+            _writeClient.Queue(line);
+        }
+
         void OnGameUnloading()
         {
             Log.Info("Unloading...");
 
             _config.Dispose();
-            _throttledWriteClient?.StopWriting();
-            _throttledWriteClient?.Flush();
+            _writeClient?.StopWriting();
+            _writeClient?.Flush();
             _endpoints?.Dispose();
+
+            MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnMessage);
 
             Log.Info("Unloaded");
         }

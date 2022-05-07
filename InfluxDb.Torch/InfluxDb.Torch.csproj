@@ -152,6 +152,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="InfluxDb.Torch\TorchInfluxDbCommandModule.cs" />
+        <Compile Include="InfluxDb.Torch\TorchInfluxDbModdingApi.cs" />
         <Compile Include="InfluxDb.Torch\TorchInfluxDbWriter.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="InfluxDb.Torch\TorchInfluxDbConfig.cs" />
