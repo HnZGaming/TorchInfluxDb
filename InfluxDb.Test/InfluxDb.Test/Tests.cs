@@ -25,7 +25,7 @@ namespace InfluxDb.Test
                 throw new Exception("InfluxDB instance not running");
             }
 
-            var config = new ConfigImpl
+            var auth = new InfluxDbAuth
             {
                 HostUrl = "http://localhost:8086",
                 Bucket = "gaalsien", // This bucket must be present in the DB instance
@@ -33,7 +33,6 @@ namespace InfluxDb.Test
                 AuthenticationToken = null,
             };
 
-            var auth = new InfluxDbAuth(config);
             _writeEndpoints = new InfluxDbWriteEndpoints(auth);
             _readEndpoints = new InfluxDbReadEndpoints(auth);
         }

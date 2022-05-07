@@ -13,13 +13,13 @@ namespace InfluxDb.Client.V18
     public sealed class InfluxDbWriteEndpointsV18 : IInfluxDbWriteEndpoints
     {
         static readonly ILogger Log = LogManager.GetCurrentClassLogger();
-        readonly IInfluxDbAuthConfigV18 _config;
+        readonly InfluxDbAuth _auth;
         readonly HttpClient _httpClient;
         readonly CancellationTokenSource _cancellationTokenSource;
 
-        public InfluxDbWriteEndpointsV18(IInfluxDbAuthConfigV18 config)
+        public InfluxDbWriteEndpointsV18(InfluxDbAuth auth)
         {
-            _config = config;
+            _auth = auth;
             _httpClient = new HttpClient();
             _cancellationTokenSource = new CancellationTokenSource();
         }
@@ -33,16 +33,16 @@ namespace InfluxDb.Client.V18
 
         public async Task WriteAsync(IReadOnlyCollection<string> lines)
         {
-            var urlBuilder = new HttpUrlBuilder(_config.HostUrl);
+            var urlBuilder = new HttpUrlBuilder(_auth.HostUrl);
             urlBuilder.SetPath("write");
-            urlBuilder.AddArgument("db", _config.Bucket);
+            urlBuilder.AddArgument("db", _auth.Bucket);
             urlBuilder.AddArgument("precision", "ms");
 
-            if (!string.IsNullOrEmpty(_config.Username) &&
-                !string.IsNullOrEmpty(_config.Password))
+            if (!string.IsNullOrEmpty(_auth.Username) &&
+                !string.IsNullOrEmpty(_auth.Password))
             {
-                urlBuilder.AddArgument("u", _config.Username);
-                urlBuilder.AddArgument("p", _config.Password);
+                urlBuilder.AddArgument("u", _auth.Username);
+                urlBuilder.AddArgument("p", _auth.Password);
             }
 
             var url = urlBuilder.ToUri();
@@ -69,10 +69,10 @@ namespace InfluxDb.Client.V18
 
                 var msgBuilder = new StringBuilder();
                 msgBuilder.AppendLine($"Failed to write ({res.StatusCode});");
-                msgBuilder.AppendLine($"Host URL: {_config.HostUrl}");
-                msgBuilder.AppendLine($"Bucket: {_config.Bucket}");
-                msgBuilder.AppendLine($"Username: {_config.Username ?? "<empty>"}");
-                msgBuilder.AppendLine($"Password: {_config.Password ?? "<empty>"}");
+                msgBuilder.AppendLine($"Host URL: {_auth.HostUrl}");
+                msgBuilder.AppendLine($"Bucket: {_auth.Bucket}");
+                msgBuilder.AppendLine($"Username: {_auth.Username ?? "<empty>"}");
+                msgBuilder.AppendLine($"Password: {_auth.Password ?? "<empty>"}");
                 msgBuilder.AppendLine($"Content ({lines.Count} lines): ");
 
                 foreach (var line in lines)

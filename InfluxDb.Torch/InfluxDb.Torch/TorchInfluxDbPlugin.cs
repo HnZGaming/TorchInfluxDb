@@ -7,6 +7,7 @@ using NLog;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
+using Torch.API.Session;
 using Utils.Torch;
 
 namespace InfluxDb.Torch
@@ -17,52 +18,49 @@ namespace InfluxDb.Torch
 
         Persistent<TorchInfluxDbConfig> _config;
         UserControl _userControl;
-
+        InfluxDbAuth _auth;
         IInfluxDbWriteEndpoints _endpoints;
         ThrottledInfluxDbWriteClient _throttledWriteClient;
         FileLoggingConfigurator _loggingConfigurator;
 
-        public TorchInfluxDbConfig Config => _config.Data;
         public UserControl GetControl() => _config.GetOrCreateUserControl(ref _userControl);
 
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
-            this.ListenOnGameLoaded(OnGameLoaded);
-            this.ListenOnGameUnloading(OnGameUnloading);
+            this.OnSessionStateChanged(TorchSessionState.Loaded, OnGameLoaded);
+            this.OnSessionStateChanged(TorchSessionState.Unloading, OnGameUnloading);
 
-            var configFilePath = this.MakeConfigFilePath();
-            _config = Persistent<TorchInfluxDbConfig>.Load(configFilePath);
-
-            _loggingConfigurator = new FileLoggingConfigurator("InfluxDbLogFile", new[] {"InfluxDb.*"}, TorchInfluxDbConfig.DefaultLogFilePath);
+            _loggingConfigurator = new FileLoggingConfigurator("InfluxDbLogFile", new[] { "InfluxDb.*" }, TorchInfluxDbConfig.DefaultLogFilePath);
             _loggingConfigurator.Initialize();
-            _loggingConfigurator.Configure(Config);
 
-            if (Config.UseV18)
+            _auth = new InfluxDbAuth();
+            if (TorchInfluxDbConfig.Instance.UseV18)
             {
-                _endpoints = new InfluxDbWriteEndpointsV18(Config);
+                _endpoints = new InfluxDbWriteEndpointsV18(_auth);
             }
             else
             {
-                var auth = new InfluxDbAuth(Config);
-                _endpoints = new InfluxDbWriteEndpoints(auth);
+                _endpoints = new InfluxDbWriteEndpoints(_auth);
             }
 
+            ReloadConfig();
+
             var writeClient = new InfluxDbWriteClient(_endpoints);
-            var interval = TimeSpan.FromSeconds(Config.WriteIntervalSecs);
+            var interval = TimeSpan.FromSeconds(TorchInfluxDbConfig.Instance.WriteIntervalSecs);
             _throttledWriteClient = new ThrottledInfluxDbWriteClient(writeClient, interval);
 
             TorchInfluxDbWriter.WriteEndpoints = _endpoints;
             TorchInfluxDbWriter.WriteClient = _throttledWriteClient;
 
-            if (Config.Enable)
+            if (TorchInfluxDbConfig.Instance.Enable)
             {
                 try
                 {
                     Log.Info("Testing database connection...");
 
                     var point = new InfluxDbPoint("plugin_init").Field("message", "successfully initialized");
-                    _endpoints.WriteAsync(new[] {point.BuildLine()}).Wait();
+                    _endpoints.WriteAsync(new[] { point.BuildLine() }).Wait();
 
                     Log.Info("Done testing databse connection");
                 }
@@ -75,25 +73,46 @@ namespace InfluxDb.Torch
 
         void OnGameLoaded()
         {
-            Config.PropertyChanged += (_, __) =>
+            TorchInfluxDbConfig.Instance.PropertyChanged += (_, _) =>
             {
-                OnConfigUpdated(Config);
+                OnConfigUpdated();
             };
 
-            OnConfigUpdated(Config);
+            OnConfigUpdated();
         }
 
-        void OnConfigUpdated(TorchInfluxDbConfig config)
+        public void ReloadConfig()
         {
-            _loggingConfigurator.Configure(config);
+            Log.Info("config reloaded");
 
-            if (config.Enable != TorchInfluxDbWriter.Enabled)
+            var configFilePath = this.MakeConfigFilePath();
+            _config?.Dispose();
+            _config = Persistent<TorchInfluxDbConfig>.Load(configFilePath);
+            TorchInfluxDbConfig.Instance = _config.Data;
+            OnConfigUpdated();
+        }
+
+        void OnConfigUpdated()
+        {
+            _loggingConfigurator.Configure(TorchInfluxDbConfig.Instance);
+            UpdateInfluxdbAuth();
+
+            if (TorchInfluxDbConfig.Instance.Enable != TorchInfluxDbWriter.Enabled)
             {
-                TorchInfluxDbWriter.Enabled = config.Enable;
-                _throttledWriteClient.SetRunning(config.Enable);
+                TorchInfluxDbWriter.Enabled = TorchInfluxDbConfig.Instance.Enable;
+                _throttledWriteClient.SetRunning(TorchInfluxDbConfig.Instance.Enable);
 
-                Log.Info($"Writing enabled: {config.Enable}");
+                Log.Info($"Writing enabled: {TorchInfluxDbConfig.Instance.Enable}");
             }
+        }
+
+        void UpdateInfluxdbAuth()
+        {
+            _auth.HostUrl = TorchInfluxDbConfig.Instance.HostUrl;
+            _auth.Organization = TorchInfluxDbConfig.Instance.Organization;
+            _auth.Bucket = TorchInfluxDbConfig.Instance.Bucket;
+            _auth.Username = TorchInfluxDbConfig.Instance.Username;
+            _auth.Password = TorchInfluxDbConfig.Instance.Password;
         }
 
         void OnGameUnloading()

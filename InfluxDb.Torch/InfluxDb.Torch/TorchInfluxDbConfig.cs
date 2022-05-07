@@ -1,18 +1,14 @@
 ﻿using System.Xml.Serialization;
-using InfluxDb.Client;
-using InfluxDb.Client.V18;
 using Torch;
 using Torch.Views;
 using Utils.Torch;
 
 namespace InfluxDb.Torch
 {
-    public sealed class TorchInfluxDbConfig :
-        ViewModel,
-        IInfluxDbAuthConfig,
-        IInfluxDbAuthConfigV18,
-        FileLoggingConfigurator.IConfig
+    public sealed class TorchInfluxDbConfig : ViewModel, FileLoggingConfigurator.IConfig
     {
+        public static TorchInfluxDbConfig Instance { get; set; }
+        
         const string OperationGroupName = "Operation";
         const string CredentialsGroupName = "Credentials";
         const string CredentialsV18GroupName = "Credentials (v1.8)";
