@@ -6,47 +6,47 @@ namespace InfluxDb.Client
 {
     public sealed class InfluxDbAuth
     {
-        readonly IInfluxDbAuthConfig _config;
-
-        public InfluxDbAuth(IInfluxDbAuthConfig config)
-        {
-            _config = config;
-        }
+        public string HostUrl { get; set; }
+        public string Bucket { get; set; }
+        public string Organization { get; set; }
+        public string AuthenticationToken { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
 
         public void ValidateOrThrow()
         {
-            _config.HostUrl.ThrowIfNullOrEmpty(nameof(_config.HostUrl));
-            _config.Organization.ThrowIfNullOrEmpty(nameof(_config.Organization));
-            _config.Bucket.ThrowIfNullOrEmpty(nameof(_config.Bucket));
+            HostUrl.ThrowIfNullOrEmpty(nameof(HostUrl));
+            Organization.ThrowIfNullOrEmpty(nameof(Organization));
+            Bucket.ThrowIfNullOrEmpty(nameof(Bucket));
         }
 
         public HttpUrlBuilder MakeHttpUrlBuilder()
         {
-            var builder = new HttpUrlBuilder(_config.HostUrl);
-            builder.AddArgument("org", _config.Organization);
-            builder.AddArgument("bucket", _config.Bucket);
+            var builder = new HttpUrlBuilder(HostUrl);
+            builder.AddArgument("org", Organization);
+            builder.AddArgument("bucket", Bucket);
             return builder;
         }
 
         public void AuthenticateHttpRequest(HttpRequestMessage req)
         {
             // auth is not needed if disabled by the instance
-            if (string.IsNullOrEmpty(_config.AuthenticationToken)) return;
+            if (string.IsNullOrEmpty(AuthenticationToken)) return;
 
-            req.Headers.TryAddWithoutValidation("Authorization", $"Token {_config.AuthenticationToken}");
+            req.Headers.TryAddWithoutValidation("Authorization", $"Token {AuthenticationToken}");
         }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
 
-            sb.AppendLine($"Host URL: {_config.HostUrl}");
-            sb.AppendLine($"Bucket: {_config.Bucket}");
-            sb.AppendLine($"Organization: {_config.Organization}");
+            sb.AppendLine($"Host URL: {HostUrl}");
+            sb.AppendLine($"Bucket: {Bucket}");
+            sb.AppendLine($"Organization: {Organization}");
 
-            if (_config.AuthenticationToken != null)
+            if (AuthenticationToken != null)
             {
-                sb.AppendLine($"Authentication Token: {_config.AuthenticationToken.HideCredential(4)}");
+                sb.AppendLine($"Authentication Token: {AuthenticationToken.HideCredential(4)}");
             }
 
             return sb.ToString();

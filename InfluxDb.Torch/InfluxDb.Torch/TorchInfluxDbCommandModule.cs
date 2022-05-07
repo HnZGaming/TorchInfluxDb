@@ -17,7 +17,7 @@ namespace InfluxDb.Torch
         [Permission(MyPromoteLevel.Admin)]
         public void Configs()
         {
-            this.GetOrSetProperty(Plugin.Config);
+            this.GetOrSetProperty(TorchInfluxDbConfig.Instance);
         }
 
         [Command("commands", "List all commands")]
@@ -25,6 +25,13 @@ namespace InfluxDb.Torch
         public void Commands()
         {
             this.ShowCommands();
+        }
+
+        [Command("reload", "Reload config from the disk")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void Reload()
+        {
+            Plugin.ReloadConfig();
         }
 
         [Command("w", "Tries to write a raw line to the integrated InfluxDB instance.")]
