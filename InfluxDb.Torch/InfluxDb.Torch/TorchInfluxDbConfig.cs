@@ -7,8 +7,6 @@ namespace InfluxDb.Torch
 {
     public sealed class TorchInfluxDbConfig : ViewModel, FileLoggingConfigurator.IConfig
     {
-        public static TorchInfluxDbConfig Instance { get; set; }
-        
         const string OperationGroupName = "Operation";
         const string CredentialsGroupName = "Credentials";
         const string CredentialsV18GroupName = "Credentials (v1.8)";

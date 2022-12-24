@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows.Controls;
 using InfluxDb.Client;
 using InfluxDb.Client.V18;
@@ -26,6 +27,7 @@ namespace InfluxDb.Torch
         bool _runOnce;
 
         public UserControl GetControl() => _config.GetOrCreateUserControl(ref _userControl);
+        public TorchInfluxDbConfig Config => _config.Data;
 
         public override void Init(ITorchBase torch)
         {
@@ -37,7 +39,10 @@ namespace InfluxDb.Torch
             _loggingConfigurator.Initialize();
 
             _auth = new InfluxDbAuth();
-            if (TorchInfluxDbConfig.Instance.UseV18)
+
+            LoadConfigFile();
+
+            if (Config.UseV18)
             {
                 _endpoints = new InfluxDbWriteEndpointsV18(_auth);
             }
@@ -46,16 +51,16 @@ namespace InfluxDb.Torch
                 _endpoints = new InfluxDbWriteEndpoints(_auth);
             }
 
-            ReloadConfig();
-
-            var interval = TimeSpan.FromSeconds(TorchInfluxDbConfig.Instance.WriteIntervalSecs);
+            var interval = TimeSpan.FromSeconds(Config.WriteIntervalSecs);
             _writeClient = new InfluxDbWriteClient(_endpoints, interval);
 
             // static api for other plugins
             TorchInfluxDbWriter.WriteEndpoints = _endpoints;
             TorchInfluxDbWriter.WriteClient = _writeClient;
 
-            if (TorchInfluxDbConfig.Instance.Enable)
+            ApplyConfig();
+
+            if (Config.Enable)
             {
                 try
                 {
@@ -73,48 +78,63 @@ namespace InfluxDb.Torch
             }
         }
 
+        void OnConfigPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            ReloadConfig();
+        }
+
         void OnGameLoaded()
         {
-            TorchInfluxDbConfig.Instance.PropertyChanged += (_, _) =>
-            {
-                OnConfigUpdated();
-            };
+            LoadConfigFile();
+            ApplyConfig();
+        }
 
-            OnConfigUpdated();
+        void LoadConfigFile()
+        {
+            if (_config?.Data != null)
+            {
+                _config.Data.PropertyChanged -= OnConfigPropertyChanged;
+            }
+
+            _config?.Dispose();
+            _config = null;
+
+            var configFilePath = this.MakeFilePath($"{nameof(TorchInfluxDbPlugin)}.cfg");
+            _config = Persistent<TorchInfluxDbConfig>.Load(configFilePath);
+
+            if (_config.Data == null)
+            {
+                throw new InvalidOperationException("config not found");
+            }
+
+            _config.Data.PropertyChanged += OnConfigPropertyChanged;
+
+            Log.Info("config loaded");
+        }
+
+        void ApplyConfig()
+        {
+            _loggingConfigurator.Configure(Config);
+
+            _auth.HostUrl = Config.HostUrl;
+            _auth.Organization = Config.Organization;
+            _auth.Bucket = Config.Bucket;
+            _auth.Username = Config.Username;
+            _auth.Password = Config.Password;
+
+            if (Config.Enable != TorchInfluxDbWriter.Enabled)
+            {
+                TorchInfluxDbWriter.Enabled = Config.Enable;
+                _writeClient.SetRunning(Config.Enable);
+
+                Log.Info($"Writing enabled: {Config.Enable}");
+            }
         }
 
         public void ReloadConfig()
         {
-            Log.Info("config reloaded");
-
-            var configFilePath = this.MakeConfigFilePath();
-            _config?.Dispose();
-            _config = Persistent<TorchInfluxDbConfig>.Load(configFilePath);
-            TorchInfluxDbConfig.Instance = _config.Data;
-            OnConfigUpdated();
-        }
-
-        void OnConfigUpdated()
-        {
-            _loggingConfigurator.Configure(TorchInfluxDbConfig.Instance);
-            UpdateInfluxdbAuth();
-
-            if (TorchInfluxDbConfig.Instance.Enable != TorchInfluxDbWriter.Enabled)
-            {
-                TorchInfluxDbWriter.Enabled = TorchInfluxDbConfig.Instance.Enable;
-                _writeClient.SetRunning(TorchInfluxDbConfig.Instance.Enable);
-
-                Log.Info($"Writing enabled: {TorchInfluxDbConfig.Instance.Enable}");
-            }
-        }
-
-        void UpdateInfluxdbAuth()
-        {
-            _auth.HostUrl = TorchInfluxDbConfig.Instance.HostUrl;
-            _auth.Organization = TorchInfluxDbConfig.Instance.Organization;
-            _auth.Bucket = TorchInfluxDbConfig.Instance.Bucket;
-            _auth.Username = TorchInfluxDbConfig.Instance.Username;
-            _auth.Password = TorchInfluxDbConfig.Instance.Password;
+            LoadConfigFile();
+            ApplyConfig();
         }
 
         public override void Update()
@@ -122,15 +142,20 @@ namespace InfluxDb.Torch
             if (!_runOnce)
             {
                 _runOnce = true;
-                MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnMessage);
+                MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnModdingApiMessageReceived);
             }
         }
 
-        void OnMessage(object message)
+        void OnModdingApiMessageReceived(object message)
         {
-            if (message is not string line) return;
+            if (message is not string line)
+            {
+                Log.Error($"invalid modding message received: {message}");
+                return;
+            }
 
             _writeClient.Queue(line);
+            Log.Trace($"modding api line queued: {line}");
         }
 
         void OnGameUnloading()
@@ -142,7 +167,7 @@ namespace InfluxDb.Torch
             _writeClient?.Flush();
             _endpoints?.Dispose();
 
-            MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnMessage);
+            MyAPIGateway.Utilities.RegisterMessageHandler(TorchInfluxDbModdingApi.Id, OnModdingApiMessageReceived);
 
             Log.Info("Unloaded");
         }

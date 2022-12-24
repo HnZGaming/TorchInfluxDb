@@ -17,7 +17,7 @@ namespace InfluxDb.Torch
         [Permission(MyPromoteLevel.Admin)]
         public void Configs()
         {
-            this.GetOrSetProperty(TorchInfluxDbConfig.Instance);
+            this.GetOrSetProperty(Plugin.Config);
         }
 
         [Command("commands", "List all commands")]
