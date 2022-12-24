@@ -34,12 +34,12 @@ namespace InfluxDb.Client.Write
             _throttle.Add(point);
         }
 
-        void OnThrottleFlush(IEnumerable<string> points)
+        void OnThrottleFlush(IReadOnlyList<string> points)
         {
-            Log.Trace($"writing={points.Any()}");
-            
+            Log.Trace($"pending points: {points.Count}");
+
             // don't send if empty
-            if (!points.Any()) return;
+            if (points.Count == 0) return;
 
             _endpoint.WriteAsync(points.ToArray()).Forget(Log);
         }
@@ -58,6 +58,8 @@ namespace InfluxDb.Client.Write
 
         public void StartWriting()
         {
+            Log.Debug("start writing");
+            
             if (!_throttle.Start())
             {
                 Log.Warn("Aborted starting; already started");
@@ -66,6 +68,8 @@ namespace InfluxDb.Client.Write
 
         public void StopWriting()
         {
+            Log.Debug("stop writing");
+
             if (!_throttle.Stop())
             {
                 Log.Warn("Aborted stopping; not running");

@@ -32,7 +32,11 @@ namespace InfluxDb.Torch
         {
             point.ThrowIfNull(nameof(point));
             WriteClient.ThrowIfNull("Integration not initialized");
-            if (!Enabled) return;
+            if (!Enabled)
+            {
+                Log.Debug($"plugin disabled: {point}");
+                return;
+            }
 
             WriteClient.Queue(point.BuildLine());
         }
@@ -46,7 +50,7 @@ namespace InfluxDb.Torch
                 throw new Exception("Not enabled");
             }
 
-            await WriteEndpoints.WriteAsync(new[] {line});
+            await WriteEndpoints.WriteAsync(new[] { line });
         }
     }
 }
