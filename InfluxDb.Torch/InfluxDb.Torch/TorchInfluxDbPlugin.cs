@@ -121,6 +121,7 @@ namespace InfluxDb.Torch
             _auth.Bucket = Config.Bucket;
             _auth.Username = Config.Username;
             _auth.Password = Config.Password;
+            _auth.AuthenticationToken = Config.AuthenticationToken;
 
             if (Config.Enable != TorchInfluxDbWriter.Enabled)
             {
