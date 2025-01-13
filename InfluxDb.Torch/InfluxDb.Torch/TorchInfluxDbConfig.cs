@@ -58,7 +58,7 @@ namespace InfluxDb.Torch
         }
 
         [XmlElement(nameof(Bucket))]
-        [Display(Order = 4, Name = "Bucket Name", GroupName = CredentialsGroupName)]
+        [Display(Order = 4, Name = "Bucket Name (\"Database\" in v1.8)", GroupName = CredentialsGroupName)]
         public string Bucket
         {
             get => _bucket;
