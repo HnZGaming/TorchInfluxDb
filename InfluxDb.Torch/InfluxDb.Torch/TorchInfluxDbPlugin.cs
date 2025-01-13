@@ -7,10 +7,12 @@ using NLog;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
+using Torch.API.Session;
 using Utils.Torch;
 
 namespace InfluxDb.Torch
 {
+    // ReSharper disable once ClassNeverInstantiated.Global
     public sealed class TorchInfluxDbPlugin : TorchPluginBase, IWpfPlugin
     {
         static readonly ILogger Log = LogManager.GetCurrentClassLogger();
@@ -28,13 +30,13 @@ namespace InfluxDb.Torch
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
-            this.ListenOnGameLoaded(OnGameLoaded);
-            this.ListenOnGameUnloading(OnGameUnloading);
+            this.OnSessionStateChanged(TorchSessionState.Loaded, OnGameLoaded);
+            this.OnSessionStateChanged(TorchSessionState.Unloading, OnGameUnloading);
 
-            var configFilePath = this.MakeConfigFilePath();
+            var configFilePath = this.MakeFilePath("TorchInfluxDbPlugin.cfg");
             _config = Persistent<TorchInfluxDbConfig>.Load(configFilePath);
 
-            _loggingConfigurator = new FileLoggingConfigurator("InfluxDbLogFile", new[] {"InfluxDb.*"}, TorchInfluxDbConfig.DefaultLogFilePath);
+            _loggingConfigurator = new FileLoggingConfigurator("InfluxDbLogFile", new[] { "InfluxDb.*" }, TorchInfluxDbConfig.DefaultLogFilePath);
             _loggingConfigurator.Initialize();
             _loggingConfigurator.Configure(Config);
 
@@ -62,7 +64,7 @@ namespace InfluxDb.Torch
                     Log.Info("Testing database connection...");
 
                     var point = new InfluxDbPoint("plugin_init").Field("message", "successfully initialized");
-                    _endpoints.WriteAsync(new[] {point.BuildLine()}).Wait();
+                    _endpoints.WriteAsync(new[] { point.BuildLine() }).Wait();
 
                     Log.Info("Done testing databse connection");
                 }
@@ -75,7 +77,7 @@ namespace InfluxDb.Torch
 
         void OnGameLoaded()
         {
-            Config.PropertyChanged += (_, __) =>
+            Config.PropertyChanged += (_, _) =>
             {
                 OnConfigUpdated(Config);
             };
