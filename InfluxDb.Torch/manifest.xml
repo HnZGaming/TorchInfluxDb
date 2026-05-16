@@ -3,5 +3,5 @@
   <Name>InfluxDB Integration</Name>
   <Guid>5af3a335-0e25-4ddd-9fc7-6084d7e42e79</Guid>
   <Repository>None</Repository>
-  <Version>v2.3.0.0</Version>
+  <Version>v2.3.1.0</Version>
 </PluginManifest>
