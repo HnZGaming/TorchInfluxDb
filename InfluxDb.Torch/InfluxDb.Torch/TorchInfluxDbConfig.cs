@@ -1,8 +1,10 @@
-﻿using System.Xml.Serialization;
+﻿using System;
+using System.Xml.Serialization;
 using InfluxDb.Client;
 using InfluxDb.Client.V18;
 using Torch;
 using Torch.Views;
+using Utils.General;
 using Utils.Torch;
 
 namespace InfluxDb.Torch
@@ -17,11 +19,18 @@ namespace InfluxDb.Torch
         const string CredentialsGroupName = "Credentials";
         const string CredentialsV18GroupName = "Credentials (v1.8)";
 
+        const string EnvHostUrl = "INFLUXDB_HOST_URL";
+        const string EnvBucket = "INFLUXDB_BUCKET";
+        const string EnvOrganization = "INFLUXDB_ORGANIZATION";
+        const string EnvUser = "INFLUXDB_USER";
+        const string EnvPassword = "INFLUXDB_PASSWORD";
+        const string EnvAuthToken = "INFLUXDB_AUTH_TOKEN";
+
         public const string DefaultLogFilePath = "Logs/InfluxDb-${shortdate}.log";
 
         bool _enable;
-        string _hostUrl = "http://localhost:8086";
-        string _bucket = "test";
+        string _hostUrl = "";
+        string _bucket = "";
         string _organization = "";
         string _authenticationToken = "";
         float _writeIntervalSecs = 10;
@@ -43,35 +52,47 @@ namespace InfluxDb.Torch
 
         [XmlElement(nameof(HostUrl))]
         [Display(Order = 2, Name = "Host URL", GroupName = CredentialsGroupName)]
-        public string HostUrl
+        public string HostUrlRaw
         {
             get => _hostUrl;
             set => SetValue(ref _hostUrl, value);
         }
 
+        [XmlIgnore]
+        public string HostUrl => GetValue(HostUrlRaw, EnvHostUrl);
+
         [XmlElement(nameof(Organization))]
         [Display(Order = 3, Name = "Organization", GroupName = CredentialsGroupName)]
-        public string Organization
+        public string OrganizationRaw
         {
             get => _organization;
             set => SetValue(ref _organization, value);
         }
 
+        [XmlIgnore]
+        public string Organization => GetValue(OrganizationRaw, EnvOrganization);
+
         [XmlElement(nameof(Bucket))]
-        [Display(Order = 4, Name = "Bucket Name", GroupName = CredentialsGroupName)]
-        public string Bucket
+        [Display(Order = 4, Name = "Bucket Name (\"Database\" in v1.8)", GroupName = CredentialsGroupName)]
+        public string BucketRaw
         {
             get => _bucket;
             set => SetValue(ref _bucket, value);
         }
 
+        [XmlIgnore]
+        public string Bucket => GetValue(BucketRaw, EnvBucket);
+
         [XmlElement(nameof(AuthenticationToken))]
         [Display(Order = 5, Name = "Authentication Token (Optional)", GroupName = CredentialsGroupName)]
-        public string AuthenticationToken
+        public string AuthenticationTokenRaw
         {
             get => _authenticationToken;
             set => SetValue(ref _authenticationToken, value);
         }
+
+        [XmlIgnore]
+        public string AuthenticationToken => GetValue(AuthenticationTokenRaw, EnvAuthToken);
 
         [XmlElement(nameof(UseV18))]
         [Display(Order = 2, Name = "Use v1.8 (NEED RESTART)", GroupName = CredentialsV18GroupName)]
@@ -83,19 +104,25 @@ namespace InfluxDb.Torch
 
         [XmlElement(nameof(Username))]
         [Display(Order = 3, Name = "Username (v1.8)", GroupName = CredentialsV18GroupName)]
-        public string Username
+        public string UsernameRaw
         {
             get => _username;
             set => SetValue(ref _username, value);
         }
 
+        [XmlIgnore]
+        public string Username => GetValue(UsernameRaw, EnvUser);
+
         [XmlElement(nameof(Password))]
         [Display(Order = 5, Name = "Password (v1.8)", GroupName = CredentialsV18GroupName)]
-        public string Password
+        public string PasswordRaw
         {
             get => _password;
             set => SetValue(ref _password, value);
         }
+
+        [XmlIgnore]
+        public string Password => GetValue(PasswordRaw, EnvPassword);
 
         [XmlElement(nameof(WriteIntervalSecs))]
         [Display(Order = 7, Name = "Throttle Interval (Seconds)", GroupName = OperationGroupName)]
@@ -135,6 +162,11 @@ namespace InfluxDb.Torch
         {
             get => _enableLoggingDebug;
             set => SetValue(ref _enableLoggingDebug, value);
+        }
+
+        static string GetValue(string config, string env)
+        {
+            return config.OrNull() ?? Environment.GetEnvironmentVariable(env).OrNull();
         }
     }
 }

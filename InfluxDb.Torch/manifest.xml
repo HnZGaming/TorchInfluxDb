@@ -1,13 +1,7 @@
 <?xml version="1.0"?>
-
 <PluginManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
   <Name>InfluxDB Integration</Name>
-
   <Guid>5af3a335-0e25-4ddd-9fc7-6084d7e42e79</Guid>
-
   <Repository>None</Repository>
-
-  <Version>v2.2.8074.40508</Version>
-
+  <Version>v2.3.1.0</Version>
 </PluginManifest>
